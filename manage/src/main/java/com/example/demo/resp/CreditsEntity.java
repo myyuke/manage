@@ -1,6 +1,8 @@
 package com.example.demo.resp;
 
 import com.example.demo.model.Position;
+
+import java.util.HashSet;
 import java.util.Set;
 
 public class CreditsEntity {
@@ -14,6 +16,7 @@ public class CreditsEntity {
     private Set<Position> position;
 
     public CreditsEntity() {
+        position = new HashSet<>();
     }
 
 

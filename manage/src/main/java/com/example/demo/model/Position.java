@@ -17,22 +17,7 @@ public class Position {
 
     private String positionName;
 
-
-    @NotFound(action = NotFoundAction.IGNORE)
-    @ManyToMany(fetch=FetchType.EAGER,cascade = CascadeType.PERSIST)
-    private Set<Person> person;
     public Position() {
-        this.person=new HashSet<>();
-
-    }
-
-
-    public Set<Person> getPerson() {
-        return person;
-    }
-
-    public void setPerson(Set<Person> person) {
-        this.person = person;
     }
 
     public Integer getId() {
@@ -56,7 +41,6 @@ public class Position {
         return "Position{" +
                 "id=" + id +
                 ", positionName='" + positionName + '\'' +
-                ", person=" + person +
                 '}';
     }
 }

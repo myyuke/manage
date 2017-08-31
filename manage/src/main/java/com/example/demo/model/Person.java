@@ -1,6 +1,9 @@
 package com.example.demo.model;
 
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import org.hibernate.sql.Update;
+
 import javax.persistence.*;
 import java.util.HashSet;
 import java.util.Set;
@@ -16,24 +19,8 @@ public class Person {
 
     private Integer age;
 
-    @ManyToMany(fetch=FetchType.EAGER,cascade = CascadeType.ALL)
-    @JoinTable(name = "person_position", joinColumns = {
-            @JoinColumn(name = "person_id")}, inverseJoinColumns = {
-            @JoinColumn(name = "position_id")})
-    private Set<Position> position;
+    @OneToMany(cascade=CascadeType.ALL, fetch = FetchType.EAGER,mappedBy = "person")
 
-
-    public Person() {
-        this.position=new HashSet<>();
-    }
-
-    public Set<Position> getPosition() {
-        return position;
-    }
-
-    public void setPosition(Set<Position> position) {
-        this.position = position;
-    }
 
     public Integer getId() {
         return id;
@@ -59,13 +46,5 @@ public class Person {
         this.age = age;
     }
 
-    @Override
-    public String toString() {
-        return "Person{" +
-                "id=" + id +
-                ", name='" + name + '\'' +
-                ", age=" + age +
-                ", position=" + position +
-                '}';
-    }
+
 }
