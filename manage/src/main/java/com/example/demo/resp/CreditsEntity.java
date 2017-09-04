@@ -15,6 +15,8 @@ public class CreditsEntity {
 
     private Set<Position> position;
 
+    private String token;
+
     public CreditsEntity() {
         position = new HashSet<>();
     }
@@ -50,6 +52,14 @@ public class CreditsEntity {
 
     public void setPosition(Set<Position> position) {
         this.position = position;
+    }
+
+    public String getToken() {
+        return token;
+    }
+
+    public void setToken(String token) {
+        this.token = token;
     }
 
     @Override
