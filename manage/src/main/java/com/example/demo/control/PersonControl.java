@@ -30,16 +30,17 @@ public class PersonControl {
     public static Map<Object,Object> map = new HashMap<>();
 
     /*
-    用户登入
+    用户登入(账号密码)
      */
     @PostMapping(value = "/login")
-    public String userlogin(@Validated @RequestBody UserLogin userLogin) {
+    public CreditsEntity userlogin(@Validated @RequestBody UserLogin userLogin) {
         UserLogin login = loginRepository.findByUsername(userLogin.getUsername());
         if (login.getPassword().equals(userLogin.getPassword())) {
             System.out.println("登陆成功");
             TimeSet timeSet = new TimeSet();
             timeSet.timeStart(login.getId());
-            return "用户token: "+loginToken(login);
+
+            return loginToken(login);
         } else {
             System.out.println("登陆失败");
         }
@@ -172,7 +173,7 @@ public class PersonControl {
 
 
     //数据库Token操作类
-    public String loginToken(UserLogin login){
+    public CreditsEntity loginToken(UserLogin login){
         UUID uuid = UUID.randomUUID();
         Token token1 = new Token();
         if (tokenRepository.findOne(login.getPerson().getId()) != null) {
@@ -187,10 +188,20 @@ public class PersonControl {
         token1.setId(login.getPerson().getId());
         token1.setToken(uuid.toString());
         tokenRepository.save(token1);
+        //填充返回数据
+        CreditsEntity result = new CreditsEntity();
+        result.setPersonId(login.getPerson().getId());
+        result.setPersonName(login.getPerson().getName());
+        result.setPersonAge(login.getPerson().getAge());
+        List<Person_Position> list = ppRepository.myFindPId(login.getPerson().getId());
+        for(Person_Position i:list){
+            result.getPosition().add(positionRepository.findOne(i.getPositionId()));
+        }
+        result.setToken(uuid.toString());
         //添加缓存数据
         map.put("token",token1.getToken());
-        map.put("user",login.getPerson());
-        return token1.getToken();
+        map.put("user",result);
+        return result;
     }
 
 

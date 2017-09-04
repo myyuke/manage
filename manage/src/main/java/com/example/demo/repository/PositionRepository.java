@@ -12,4 +12,6 @@ public interface PositionRepository extends JpaRepository<Position,Integer> {
     //查找对应职位信息
     @Query(value = "select * from position where id=?", nativeQuery = true)
     Position myFindPo(Integer id);
+
+
 }
