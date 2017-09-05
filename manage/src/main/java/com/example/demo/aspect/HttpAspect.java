@@ -29,7 +29,6 @@ public class HttpAspect {
         ServletRequestAttributes attributes =
                 (ServletRequestAttributes) RequestContextHolder.getRequestAttributes();
         HttpServletRequest request = attributes.getRequest();
-
         //url
         logger.info("url={}",request.getRequestURI());
         //Method
