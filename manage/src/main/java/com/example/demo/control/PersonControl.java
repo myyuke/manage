@@ -1,9 +1,11 @@
 package com.example.demo.control;
 
+import com.example.demo.errorcatch.LoginException;
+import com.example.demo.errorcatch.MyException;
+import com.example.demo.errorcatch.RequestException;
 import com.example.demo.model.*;
 import com.example.demo.repository.*;
 import com.example.demo.resp.CreditsEntity;
-import com.example.demo.until.TimeSet;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
@@ -34,46 +36,24 @@ public class PersonControl {
     用户登入(账号密码)
      */
     @PostMapping(value = "/login", produces = "application/json")
-    public CreditsEntity userLogin(@Validated @RequestBody UserLogin userLogin) {
+    public CreditsEntity userLogin(@Validated @RequestBody UserLogin userLogin) throws Exception{
         UserLogin login = loginRepository.findByUsername(userLogin.getUsername());
         if (login.getPassword().equals(userLogin.getPassword())) {
             System.out.println("登陆成功");
             //Token数据库操作方法loginToken()
             return loginToken(login);
         } else {
-            System.out.println("登陆失败");
+            throw new LoginException("账号或密码错误");
         }
-        return null;
-    }
-
-    //获取已登入Token用户信息
-    @PostMapping(value = "/token", produces = "application/json")
-    public Object loginByToken(@Validated @RequestBody CreditsEntity requestObj){
-        if(map.get("token")==null){
-            map.put("token","");
-            map.put("user","");
-        }
-        if(map.get("token").equals(requestObj.getToken()) && requestObj.getToken()!=null){
-            return map.get("user");
-        }
-        Token token = tokenRepository.findByToken(requestObj.getToken());
-        if(token == null){
-            return "Token无效";
-        }
-        Person person = personRepository.findOne(token.getId());
-        if(person == null){
-            return "无该人员信息";
-        }
-        return person;
     }
 
     /*
     查询所有人员信息
      */
     @GetMapping(value = "/persons")
-    public Object personList(@RequestParam("access_token") String token) {
+    public Object personList(@RequestParam("access_token") String token)throws MyException{
         if(verifyToken(token)==false){
-            return "无请求权限，操作错误";
+            throw new MyException("权限不足");
         }
         //返回类数组初始化
         List<CreditsEntity> creditsEntities = new ArrayList<>();
@@ -105,9 +85,9 @@ public class PersonControl {
      */
     @Transactional
     @PostMapping(value = "/persons", produces = "application/json")
-    public Object personAdd(@Validated @RequestBody CreditsEntity requestObj) {
+    public Object personAdd(@Validated @RequestBody CreditsEntity requestObj) throws Exception{
         if(verifyToken(requestObj.getToken())==false){
-            return "无请求权限，操作错误";
+            throw new MyException("权限不足");
         }
         //新增人员表
         Person person = new Person();
@@ -117,14 +97,20 @@ public class PersonControl {
 
         //新增人员-职位对照表
         for (Position position : requestObj.getPosition()) {
-            int i = 0;
-            Person_Position person_position = new Person_Position();
-            person_position.setPerson(person);
-            person_position.setPositionId(position.getId());
-            ppRepository.save(person_position);
+            Position myp = positionRepository.myFindPo(position.getId());
+            if(position.getPositionName().equals(myp.getPositionName())){
+                Person_Position person_position = new Person_Position();
+                person_position.setPerson(person);
+                person_position.setPositionId(position.getId());
+                ppRepository.save(person_position);
+            }else {
+                throw new RequestException("职业ID对应错误");
+            }
+
         }
         //返回人员信息
         requestObj.setPersonId(person.getId());
+        requestObj.setToken("");
         return requestObj;
     }
 
@@ -134,16 +120,16 @@ public class PersonControl {
      */
     @GetMapping(value = "/personsOne")
     public Object findPerson(@RequestParam("id") Integer id,
-                             @RequestParam("access_token") String token) {
+                             @RequestParam("access_token") String token) throws Exception{
         if(verifyToken(token)==false){
-            return "无请求权限，操作错误";
+            throw new MyException("权限不足");
         }
         //初始化返回信息类
         CreditsEntity creditsEntity = new CreditsEntity();
         //查询人员基本信息（不包括职业）
         Person person = personRepository.findOne(id);
         if(person==null){
-            return "用户不存在";
+            throw new RequestException("查询用户不存在");
         }
         creditsEntity.setPersonId(id);
         creditsEntity.setPersonAge(person.getAge());
@@ -167,13 +153,13 @@ public class PersonControl {
     更新一个人员
      */
     @PutMapping(value = "/persons", produces = "application/json")
-    public Object personUpdate(@Validated @RequestBody CreditsEntity requestObj) {
+    public Success personUpdate(@Validated @RequestBody CreditsEntity requestObj) throws Exception{
         if(verifyToken(requestObj.getToken())==false){
-            return "无请求权限，操作错误";
+            throw new MyException("权限不足");
         }
         Person person = personRepository.findOne(requestObj.getPersonId());
         if(person==null){
-            return "用户不存在";
+            throw new RequestException("更新用户不存在");
         }
         person.setName(requestObj.getPersonName());
         person.setAge(requestObj.getPersonAge());
@@ -189,28 +175,41 @@ public class PersonControl {
             person_position.setPositionId(position.getId());
             ppRepository.save(person_position);
         }
-
-        return requestObj;
+        Success success = new Success(200,"更新成功");
+        return success;
     }
 
     /*
     删除一个人员
      */
     @DeleteMapping(value = "/persons")
-    public String deletePerson(@RequestParam("id") Integer id,
-                               @RequestParam("access_token") String token) {
-        if(ppRepository.myFindPId(id)==null){
-            return "用户信息不存在，删除失败";
+    public Success deletePerson(@RequestParam("id") Integer id,
+                               @RequestParam("access_token") String token)throws Exception{
+        if(verifyToken(token)==false){
+            throw new MyException("权限不足");
         }
+        if(ppRepository.myFindPId(id)==null){
+            throw new RequestException("删除失败,用户不存在");
+        }
+        //删除中间表
         List<Person_Position> person_positions = ppRepository.myFindPId(id);
         ppRepository.delete(person_positions);
-        tokenRepository.delete(id);
-        CreditsEntity creditsEntity = (CreditsEntity)map.get("user");
-        if(creditsEntity.getPersonId()==id){
-            PersonControl.map.put("token", "");
-            PersonControl.map.put("user", null);
+        //删除用户
+        personRepository.delete(id);
+
+        if(tokenRepository.findOne(id)!=null){
+            tokenRepository.delete(id);
         }
-        return "删除成功";
+        //如果缓存中有数据且与删除用户相同则清空缓存
+        if(map.get("user")!=null){
+            CreditsEntity creditsEntity = (CreditsEntity)map.get("user");
+            if(creditsEntity.getPersonId()==id){
+                PersonControl.map.put("token", "");
+                PersonControl.map.put("user", null);
+            }
+        }
+        Success success = new Success(200,"删除成功");
+        return success;
     }
 
 
@@ -297,12 +296,5 @@ public class PersonControl {
             }
         }
         return false;
-    }
-
-    @PostMapping(value = "/text", produces = "application/json")
-    public Boolean findMy(@Validated @RequestBody CreditsEntity requestObj){
-
-        return verifyToken(requestObj.getToken());
-
     }
 }
