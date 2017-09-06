@@ -60,7 +60,7 @@ public class PersonControl {
     @GetMapping(value = "/persons")
     public Object personList(@RequestParam("access_token") String token) throws MyException {
         if (verifyToken(token) == false) {
-            throw new MyException("权限不足");
+            throw new MyException("权限不足或账号错误");
         }
         //返回类数组初始化
         List<ResponseEntity> responseEntities = new ArrayList<>();
@@ -191,14 +191,23 @@ public class PersonControl {
 
         //更新中间表信息
         for (Position position : requestObj.getPosition()) {
-            Person_Position person_position = new Person_Position();
-            person_position.setPerson(person);
-            person_position.setPositionId(position.getId());
-            ppRepository.save(person_position);
+            Position myp = positionRepository.myFindPo(position.getId());
+            if (position.getPositionName().equals(myp.getPositionName())) {
+                Person_Position person_position = new Person_Position();
+                person_position.setPositionId(position.getId());
+                person_position.setPerson(person);
+                ppRepository.save(person_position);
+            } else {
+                throw new RequestException("职业ID对应错误");
+            }
         }
 
         //更新账号密码表信息
         UserLogin user = loginRepository.myFindPId(requestObj.getPersonId());
+        if(user==null){
+            user = new UserLogin();
+        }
+        user.setPerson(person);
         user.setUsername(requestObj.getUsername());
         user.setPassword(requestObj.getPassword());
         loginRepository.save(user);
