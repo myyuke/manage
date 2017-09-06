@@ -1,12 +1,27 @@
 package com.example.demo.model;
 
-public class Success {
+public class Success<T> {
     private Integer code;
     private String message;
+    private T data;
 
     public Success(Integer code, String message) {
         this.code = code;
         this.message = message;
+    }
+
+    public Success(Integer code, String message, T data) {
+        this.code = code;
+        this.message = message;
+        this.data = data;
+    }
+
+    public T getData() {
+        return data;
+    }
+
+    public void setData(T data) {
+        this.data = data;
     }
 
     public String getMessage() {
@@ -27,9 +42,10 @@ public class Success {
 
     @Override
     public String toString() {
-        return "DeleteSuccess{" +
+        return "Success{" +
                 "code=" + code +
                 ", message='" + message + '\'' +
+                ", data=" + data +
                 '}';
     }
 }

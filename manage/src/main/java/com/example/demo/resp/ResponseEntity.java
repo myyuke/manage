@@ -5,8 +5,7 @@ import com.example.demo.model.Position;
 import java.util.HashSet;
 import java.util.Set;
 
-public class CreditsEntity {
-
+public class ResponseEntity {
     private Integer personId;
 
     private String personName;
@@ -15,16 +14,9 @@ public class CreditsEntity {
 
     private Set<Position> position;
 
-    private String token;
-
-    private String username;
-
-    private String password;
-
-    public CreditsEntity() {
+    public ResponseEntity() {
         position = new HashSet<>();
     }
-
 
     public Integer getPersonId() {
         return personId;
@@ -58,40 +50,13 @@ public class CreditsEntity {
         this.position = position;
     }
 
-    public String getToken() {
-        return token;
-    }
-
-    public void setToken(String token) {
-        this.token = token;
-    }
-
-    public String getUsername() {
-        return username;
-    }
-
-    public void setUsername(String username) {
-        this.username = username;
-    }
-
-    public String getPassword() {
-        return password;
-    }
-
-    public void setPassword(String password) {
-        this.password = password;
-    }
-
     @Override
     public String toString() {
-        return "CreditsEntity{" +
+        return "ResponseEntity{" +
                 "personId=" + personId +
                 ", personName='" + personName + '\'' +
                 ", personAge=" + personAge +
                 ", position=" + position +
-                ", token='" + token + '\'' +
-                ", username='" + username + '\'' +
-                ", password='" + password + '\'' +
                 '}';
     }
 }
