@@ -12,12 +12,16 @@ import java.util.Set;
 public class Position {
 
     @Id
-    @GeneratedValue
     private Integer id;
 
     private String positionName;
 
     public Position() {
+    }
+
+    public Position(Integer id,String positionName) {
+        this.id = id;
+        this.positionName = positionName;
     }
 
     public Integer getId() {

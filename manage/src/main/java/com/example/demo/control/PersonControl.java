@@ -38,6 +38,24 @@ public class PersonControl {
 
     public static Map<Object, Object> map = new HashMap<>();
 
+    /*
+    初始化职位表
+     */
+    @PostMapping(value = "/positions", produces = "application/json")
+    public Object addPosition(){
+        Position position1 = new Position(1,"学生");
+        Position position2 = new Position(2,"老师");
+        Position position3 = new Position(3,"管理员");
+        Position position4 = new Position(4,"领导");
+        System.out.println(position4.getId());
+        List<Position> positions = new ArrayList<>();
+        positions.add(position1);
+        positions.add(position2);
+        positions.add(position3);
+        positions.add(position4);
+        positionRepository.save(positions);
+        return positions;
+    }
 
     /*
     用户登入(账号密码)
