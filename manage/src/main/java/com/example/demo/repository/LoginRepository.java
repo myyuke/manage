@@ -12,4 +12,5 @@ public interface LoginRepository extends JpaRepository<UserLogin,Integer> {
     public UserLogin findByUsername(String username);
     @Query(value = "select * from user_login where person_id=?", nativeQuery = true)
     UserLogin myFindPId(Integer id);
+
 }

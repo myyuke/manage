@@ -6,15 +6,16 @@ import com.example.demo.errorcatch.RequestException;
 import com.example.demo.model.*;
 import com.example.demo.repository.*;
 import com.example.demo.resp.CreditsEntity;
+import com.example.demo.resp.DelRespEntity;
 import com.example.demo.resp.ResponseEntity;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Sort;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
 import javax.transaction.Transactional;
 import java.text.SimpleDateFormat;
 import java.util.*;
-import java.util.logging.LogRecord;
 
 @RestController
 public class PersonControl {
@@ -82,7 +83,8 @@ public class PersonControl {
         }
         //返回类数组初始化
         List<ResponseEntity> responseEntities = new ArrayList<>();
-        List<Person> persons = personRepository.findAll();
+        Sort sort = new Sort(Sort.Direction.ASC, "id");
+        List<Person> persons = personRepository.findAll(sort);
         for (Person person : persons) {
             //返回类cred填充数据
             ResponseEntity cred = new ResponseEntity();
@@ -137,13 +139,47 @@ public class PersonControl {
         initRecord(token, meths);
         return responseEntity;
     }
+    /*
+   按姓名查询人员
+   */
+    @Transactional
+    @GetMapping(value = "/personsOneLike")
+    public List<ResponseEntity> findPersonLike(@RequestParam("personName") String personName,
+                                         @RequestParam("access_token") String token) throws Exception {
+        if (verifyToken(token) == false) {
+            throw new MyException("权限不足或账号错误");
+        }
+        //返回类数组初始化
+        List<ResponseEntity> responseEntities = new ArrayList<>();
+        Sort sort = new Sort(Sort.Direction.ASC, "id");
+        String name = "%"+personName+"%";
+        List<Person> namePersons = personRepository.findByNameLike(name,sort);
+        for (Person person : namePersons) {
+            //返回类cred填充数据
+            ResponseEntity cred = new ResponseEntity();
+            cred.setPersonId(person.getId());
+            cred.setPersonName(person.getName());
+            cred.setPersonAge(person.getAge());
+            List<Person_Position> person_positions = ppRepository.myFindPId(person.getId());
+            for (Person_Position p : person_positions) {
+                Position position = positionRepository.myFindPo(p.getPositionId());
+                cred.getPosition().add(position);
+            }
+            //加入返回类数组
+            responseEntities.add(cred);
+        }
+        //记录日志文件
+        initRecord(token, "按姓名查询人员");
+        return responseEntities;
+    }
+
 
 
     /*
     新增人员信息
      */
     @Transactional
-    @PostMapping(value = "/persons", produces = "application/json")
+    @PostMapping(value = "/addpersons", produces = "application/json")
     public Success personAdd(@Validated @RequestBody CreditsEntity requestObj) throws Exception {
         if (verifyToken(requestObj.getToken()) == false) {
             throw new MyException("权限不足或账号错误");
@@ -165,15 +201,17 @@ public class PersonControl {
             } else {
                 throw new RequestException("职业ID对应错误");
             }
-
         }
-        //新增账号密码表信息
-        UserLogin user = new UserLogin();
-        user.setPerson(person);
-        user.setUsername(requestObj.getUsername());
-        user.setPassword(requestObj.getPassword());
-        loginRepository.save(user);
 
+
+        //新增账号密码表信息
+        if(requestObj.getUsername()!=null){
+            UserLogin user = new UserLogin();
+            user.setPerson(person);
+            user.setUsername(requestObj.getUsername());
+            user.setPassword(requestObj.getPassword());
+            loginRepository.save(user);
+        }
 
         //记录日志文件
         String meths = "新增ID：" + person.getId();
@@ -191,7 +229,7 @@ public class PersonControl {
     更新一个人员
      */
     @Transactional
-    @PutMapping(value = "/persons", produces = "application/json")
+    @PutMapping(value = "/updatapersons", produces = "application/json")
     public Success personUpdate(@Validated @RequestBody CreditsEntity requestObj) throws Exception {
         if (verifyToken(requestObj.getToken()) == false) {
             throw new MyException("权限不足或账号错误");
@@ -222,14 +260,12 @@ public class PersonControl {
 
         //更新账号密码表信息
         UserLogin user = loginRepository.myFindPId(requestObj.getPersonId());
-        if(user==null){
-            user = new UserLogin();
+        if(user!=null){
+            user.setPerson(person);
+            user.setUsername(requestObj.getUsername());
+            user.setPassword(requestObj.getPassword());
+            loginRepository.save(user);
         }
-        user.setPerson(person);
-        user.setUsername(requestObj.getUsername());
-        user.setPassword(requestObj.getPassword());
-        loginRepository.save(user);
-
         Success success = new Success(200, "更新成功",requestObj);
         //记录日志文件
         String meths = "更新ID：" + person.getId();
@@ -239,10 +275,54 @@ public class PersonControl {
     }
 
     /*
-    删除一个人员
+    批量删除人员
      */
     @Transactional
-    @DeleteMapping(value = "/persons")
+    @PostMapping(value = "/delpersons")
+    public Success deletePersons(@Validated @RequestBody DelRespEntity delRespEntity) throws Exception {
+        if (verifyToken(delRespEntity.getToken()) == false) {
+            throw new MyException("权限不足或账号错误");
+        }
+        for(Integer id:delRespEntity.getIds()) {
+            if (ppRepository.myFindPId(id) == null) {
+                throw new RequestException("删除失败,用户不存在");
+            }
+            //删除中间表
+            List<Person_Position> person_positions = ppRepository.myFindPId(id);
+            ppRepository.delete(person_positions);
+            //删除账号密码表信息
+            UserLogin login = loginRepository.myFindPId(id);
+            if (login != null) {
+                loginRepository.delete(login);
+            }
+            //删除用户
+            personRepository.delete(id);
+            //删除Token表相关数据
+            if (tokenRepository.findOne(id) != null) {
+                tokenRepository.delete(id);
+            }
+            //如果缓存中有数据且与删除用户相同则清空缓存
+            if (map.get("user") != null) {
+                CreditsEntity creditsEntity = (CreditsEntity) map.get("user");
+                if (creditsEntity.getPersonId() == id) {
+                    PersonControl.map.put("token", "");
+                    PersonControl.map.put("user", null);
+                }
+            }
+
+        }
+        Success success = new Success(200, "删除成功");
+        //记录日志文件
+        String meths = "删除ID：" + delRespEntity.getIds();
+        initRecord(delRespEntity.getToken(), meths);
+        return success;
+    }
+
+    /*
+    批量删除人员
+     */
+    @Transactional
+    @DeleteMapping(value = "/delperson")
     public Success deletePerson(@RequestParam("id") Integer id,
                                 @RequestParam("access_token") String token) throws Exception {
         if (verifyToken(token) == false) {
@@ -256,7 +336,9 @@ public class PersonControl {
         ppRepository.delete(person_positions);
         //删除账号密码表信息
         UserLogin login = loginRepository.myFindPId(id);
-        loginRepository.delete(login);
+        if(login!=null){
+            loginRepository.delete(login);
+        }
         //删除用户
         personRepository.delete(id);
         //删除Token表相关数据
